@@ -35,7 +35,7 @@ A **production-quality** frontend web app built with **React + Tailwind CSS** fe
 
 ```bash
 # Clone the repo
-git clone https://github.com/YOUR_USERNAME/food-waste-reduction-system.git
+git clone https://github.com/Mrvishwass/food-waste-reduction-system.git
 cd food-waste-reduction-system
 
 # Install dependencies
