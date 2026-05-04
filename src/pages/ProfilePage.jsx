@@ -15,8 +15,9 @@ import toast from 'react-hot-toast';
 
 const TABS = [
   { id: 'profile', label: 'Profile', icon: User },
-  { id: 'donations', label: 'My Donations', icon: Heart },
+  { id: 'donations', label: 'My Donations', icon: Heart, role: 'donor' },
   { id: 'requests', label: 'My Requests', icon: HandHeart },
+  { id: 'incoming', label: 'Incoming Requests', icon: Award, role: 'donor' },
   { id: 'impact', label: 'Impact', icon: Star },
 ];
 
@@ -34,6 +35,7 @@ export default function ProfilePage() {
   const [editing, setEditing] = useState(false);
   const [myDonations, setMyDonations] = useState([]);
   const [myRequests, setMyRequests] = useState([]);
+  const [incomingRequests, setIncomingRequests] = useState([]);
   const [dataLoading, setDataLoading] = useState(false);
   const { loading: saving, execute } = useAsyncAction();
 
@@ -49,17 +51,19 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (!user) { navigate('/auth'); return; }
-    if (activeTab === 'donations' || activeTab === 'requests') loadUserData();
+    if (activeTab === 'donations' || activeTab === 'requests' || activeTab === 'incoming') loadUserData();
   }, [user, activeTab]);
 
   async function loadUserData() {
     setDataLoading(true);
-    const [donations, requests] = await Promise.all([
+    const [donations, requests, incoming] = await Promise.all([
       api.getFoodItems().then(items => items.filter(i => i.donorId === user.id)),
       api.getUserRequests(user.id),
+      user.role === 'donor' ? api.getIncomingRequests(user.id) : Promise.resolve([]),
     ]);
     setMyDonations(donations);
     setMyRequests(requests);
+    setIncomingRequests(incoming);
     setDataLoading(false);
   }
 
@@ -82,6 +86,16 @@ export default function ProfilePage() {
         onError: (err) => toast.error(err),
       }
     );
+  };
+
+  const handleUpdateStatus = async (reqId, status) => {
+    try {
+      await api.updateRequestStatus(reqId, status);
+      setIncomingRequests(prev => prev.map(r => r.id === reqId ? { ...r, status } : r));
+      toast.success(`Request ${status} successfully!`);
+    } catch (err) {
+      toast.error('Failed to update status');
+    }
   };
 
   if (!user) return null;
@@ -160,7 +174,7 @@ export default function ProfilePage() {
 
         {/* Tabs */}
         <div className="flex gap-1 bg-white/5 rounded-2xl p-1 mb-6 overflow-x-auto animate-fade-up" style={{ animationDelay: '150ms' }}>
-          {TABS.map(tab => (
+          {TABS.filter(t => !t.role || t.role === user.role).map(tab => (
             <button
               key={tab.id}
               id={`profile-tab-${tab.id}`}
@@ -346,6 +360,62 @@ export default function ProfilePage() {
                         <p className="text-white/40 text-xs mt-1">
                           {new Date(req.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Incoming Requests Tab ── */}
+          {activeTab === 'incoming' && (
+            <div>
+              <h2 className="font-display font-bold text-xl text-white mb-6">
+                Incoming Requests ({incomingRequests.length})
+              </h2>
+              {dataLoading ? (
+                <div className="space-y-4">
+                  {[1, 2].map(i => (
+                    <div key={i} className="skeleton h-24 rounded-xl" />
+                  ))}
+                </div>
+              ) : incomingRequests.length === 0 ? (
+                <div className="text-center py-20 glass-card">
+                  <div className="text-5xl mb-4">📥</div>
+                  <h3 className="font-bold text-xl text-white mb-2">No incoming requests</h3>
+                  <p className="text-white/50 mb-6">When someone requests your food, it will appear here.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {incomingRequests.map((req, i) => (
+                    <div key={req.id} className="glass-card p-5 animate-fade-up" style={{ animationDelay: `${i * 60}ms` }}>
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-bold text-white text-lg">{req.requesterName}</h3>
+                            <span className={`badge ${
+                              req.status === 'pending' ? 'badge-yellow' :
+                              req.status === 'accepted' ? 'badge-green' : 'badge-red'
+                            }`}>
+                              {req.status}
+                            </span>
+                          </div>
+                          <p className="text-white/70 text-sm mb-2">"{req.message}"</p>
+                          <p className="text-white/40 text-xs flex items-center gap-1">
+                            <Clock size={12} /> Requested on {new Date(req.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                          </p>
+                        </div>
+                        {req.status === 'pending' && (
+                          <div className="flex gap-2 w-full sm:w-auto">
+                            <Button variant="secondary" onClick={() => handleUpdateStatus(req.id, 'rejected')} className="flex-1 sm:flex-none">
+                              Reject
+                            </Button>
+                            <Button variant="primary" onClick={() => handleUpdateStatus(req.id, 'accepted')} className="flex-1 sm:flex-none">
+                              Accept
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}

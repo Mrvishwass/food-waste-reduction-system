@@ -153,6 +153,7 @@ export const SAMPLE_USERS = [
     name: 'Alex Johnson',
     email: 'alex@foodshare.com',
     password: 'password123',
+    role: 'donor',
     avatar: 'AJ',
     bio: 'Food enthusiast and sustainability advocate. Helping reduce food waste one meal at a time.',
     location: 'Koramangala, Bangalore',
@@ -163,6 +164,22 @@ export const SAMPLE_USERS = [
     rating: 4.8,
     badges: ['Top Donor', 'Community Hero'],
   },
+  {
+    id: 'user_2',
+    name: 'Rahul Mehta',
+    email: 'rahul@foodshare.com',
+    password: 'password123',
+    role: 'user',
+    avatar: 'RM',
+    bio: 'Student looking to connect with donors.',
+    location: 'BTM Layout, Bangalore',
+    phone: '+91 80000 22222',
+    joinedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+    donationsCount: 0,
+    requestsCount: 1,
+    rating: 5.0,
+    badges: ['New Member'],
+  }
 ];
 
 export const SAMPLE_REQUESTS = [
@@ -203,10 +220,12 @@ export const storage = {
 // ─── Initialize seed data ────────────────────────────────────────────────────
 
 export function initializeData() {
-  if (!storage.get('foodshare_initialized')) {
+  const version = 'v2_roles';
+  if (storage.get('foodshare_version') !== version) {
     storage.set('foodshare_users', SAMPLE_USERS);
     storage.set('foodshare_food_items', SAMPLE_FOOD_ITEMS);
     storage.set('foodshare_requests', SAMPLE_REQUESTS);
+    storage.set('foodshare_version', version);
     storage.set('foodshare_initialized', true);
   }
 }
@@ -320,6 +339,39 @@ export const api = {
     await api.delay(600);
     const requests = storage.get('foodshare_requests') || [];
     return requests.filter(r => r.requesterId === userId);
+  },
+
+  getIncomingRequests: async (userId) => {
+    await api.delay(600);
+    const requests = storage.get('foodshare_requests') || [];
+    const items = storage.get('foodshare_food_items') || [];
+    
+    // Find all food items owned by this user
+    const myFoodIds = items.filter(i => i.donorId === userId).map(i => i.id);
+    
+    // Return requests that are for these food items
+    return requests.filter(r => myFoodIds.includes(r.foodId));
+  },
+
+  updateRequestStatus: async (requestId, newStatus) => {
+    await api.delay(600);
+    const requests = storage.get('foodshare_requests') || [];
+    const idx = requests.findIndex(r => r.id === requestId);
+    if (idx !== -1) {
+      requests[idx].status = newStatus;
+      storage.set('foodshare_requests', requests);
+      
+      // If approved, mark food as completed
+      if (newStatus === 'accepted') {
+        const items = storage.get('foodshare_food_items') || [];
+        const itemIdx = items.findIndex(i => i.id === requests[idx].foodId);
+        if (itemIdx !== -1) {
+          items[itemIdx].status = 'completed';
+          storage.set('foodshare_food_items', items);
+        }
+      }
+    }
+    return requests[idx];
   },
 
   // Profile

@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useAsyncAction, useFormValidation, validators } from '../hooks/useHelpers';
-import { Input } from '../components/ui/Input';
+import { Input, Select } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import toast from 'react-hot-toast';
 
@@ -17,6 +17,7 @@ const LOGIN_RULES = {
 const REGISTER_RULES = {
   name: [validators.required('Name is required'), validators.minLength(2)],
   email: [validators.required('Email is required'), validators.email()],
+  role: [validators.required('Please select an account type')],
   password: [validators.required('Password is required'), validators.minLength(8, 'Minimum 8 characters')],
   confirmPassword: [validators.required('Please confirm your password'), validators.match('password')],
   phone: [validators.phone()],
@@ -33,7 +34,7 @@ export default function AuthPage() {
 
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
   const [registerForm, setRegisterForm] = useState({
-    name: '', email: '', password: '', confirmPassword: '', phone: '', location: '',
+    name: '', email: '', role: '', password: '', confirmPassword: '', phone: '', location: '',
   });
 
   const loginVal = useFormValidation(LOGIN_RULES);
@@ -239,6 +240,20 @@ export default function AuthPage() {
                 onBlur={() => { registerVal.touch('email'); registerVal.validate(registerForm); }}
                 error={registerVal.touched.email && registerVal.errors.email}
                 icon={<Mail size={16} />}
+                required
+              />
+              <Select
+                id="auth-reg-role"
+                label="Account Type"
+                value={registerForm.role}
+                onChange={e => updateRegister('role', e.target.value)}
+                onBlur={() => { registerVal.touch('role'); registerVal.validate(registerForm); }}
+                error={registerVal.touched.role && registerVal.errors.role}
+                options={[
+                  { value: 'user', label: '👤 User (Request food only)' },
+                  { value: 'donor', label: '🤝 Donor (Donate & request food)' }
+                ]}
+                placeholder="Select an account type..."
                 required
               />
               <Input

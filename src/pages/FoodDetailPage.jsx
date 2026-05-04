@@ -50,10 +50,6 @@ export default function FoodDetailPage() {
       navigate('/auth');
       return;
     }
-    if (food.donorId === user.id) {
-      toast.error("You can't request your own listing");
-      return;
-    }
     setRequestModal(true);
   };
 
@@ -121,7 +117,7 @@ export default function FoodDetailPage() {
 
   const expiry = getExpiryLabel(food.expiryDate);
   const isOwner = user?.id === food.donorId;
-  const canRequest = !isOwner && food.status === 'available' && !requested;
+  const canRequest = food.status === 'available' && !requested;
 
   return (
     <div className="min-h-screen pt-24 pb-16 animate-fade-in">

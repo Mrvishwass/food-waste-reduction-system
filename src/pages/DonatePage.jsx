@@ -77,16 +77,22 @@ export default function DonatePage() {
   };
 
   const step1Valid = () => {
-    const fieldsToCheck = { title: form.title, description: form.description, category: form.category, quantity: form.quantity, expiryDate: form.expiryDate };
-    const ok = validate(fieldsToCheck);
-    touchAll(fieldsToCheck);
-    return ok;
+    validate(form);
+    const fields = ['title', 'description', 'category', 'quantity', 'expiryDate'];
+    let isValid = true;
+    fields.forEach(f => {
+      const err = VALIDATION_RULES[f].find(r => r(form[f], form));
+      if (err) isValid = false;
+    });
+    touchAll(fields.reduce((a, f) => ({ ...a, [f]: true }), {}));
+    return isValid;
   };
 
   const step2Valid = () => {
-    const ok = validate({ location: form.location });
+    validate(form);
+    const err = VALIDATION_RULES.location.find(r => r(form.location, form));
     touch('location');
-    return ok;
+    return !err;
   };
 
   const handleNext = () => {
@@ -118,13 +124,28 @@ export default function DonatePage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen pt-24 flex items-center justify-center">
+      <div className="min-h-screen pt-24 flex items-center justify-center px-4">
         <div className="glass-card p-10 text-center max-w-md">
           <div className="text-5xl mb-4">🔐</div>
           <h2 className="font-display font-bold text-2xl text-white mb-3">Login Required</h2>
           <p className="text-white/60 mb-6">You need to be logged in to donate food.</p>
           <Button variant="primary" onClick={() => navigate('/auth')} fullWidth>
             Log In to Continue
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (user.role !== 'donor') {
+    return (
+      <div className="min-h-screen pt-24 flex items-center justify-center px-4">
+        <div className="glass-card p-10 text-center max-w-md">
+          <div className="text-5xl mb-4">🚫</div>
+          <h2 className="font-display font-bold text-2xl text-white mb-3">Donors Only</h2>
+          <p className="text-white/60 mb-6">Your account type is set to 'User'. Only accounts with the 'Donor' role can list food.</p>
+          <Button variant="primary" onClick={() => navigate('/browse')} fullWidth>
+            Browse Available Food
           </Button>
         </div>
       </div>
